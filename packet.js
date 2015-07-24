@@ -19,7 +19,7 @@ var Packet = function(buffer, options) {
       case '`':     // Current mic-e
       case '\'':    // Old mic-e or new TM-D700
         this.packetType = 'mic-e';
-        position = Packet.decodeMicE(destinationBuffer, payloadBuffer);
+        position = Packet.decodeMicE(this.destinationBuffer, this.payloadBuffer);
         break;
       case '/': // Position, w/ timestamp, w/o messaging
       case '@': // Position, w/ timestamp, w/ messaging
