@@ -1,11 +1,15 @@
-var Packet = function(content, options) {
-  if(typeof content === 'string') {
+var Packet = function(buffer, options) {
+  if(Buffer.isBuffer(buffer)) {
     // Decode the string
+    var content = buffer.toString('utf-8');
     var destinationIndex = content.indexOf('>');
     var payloadIndex = content.indexOf(':');
+
     this.sourceAddress = content.slice(0, destinationIndex);
     this.destinationAddress = content.slice(destinationIndex + 1, payloadIndex);
+    this.destinationBuffer = buffer.slice(destinationIndex + 1, payloadIndex);
     this.payload = content.slice(payloadIndex + 1);
+    this.payloadBuffer = buffer.slice(payloadIndex + 1);
 
     var position;
     // Determine packet type
@@ -15,6 +19,7 @@ var Packet = function(content, options) {
       case '`':     // Current mic-e
       case '\'':    // Old mic-e or new TM-D700
         this.packetType = 'mic-e';
+        position = Packet.decodeMicE(destinationBuffer, payloadBuffer);
         break;
       case '/': // Position, w/ timestamp, w/o messaging
       case '@': // Position, w/ timestamp, w/ messaging
@@ -39,6 +44,55 @@ var Packet = function(content, options) {
 
   }
 }
+
+// doesn't yet handle speed, heading, altitude, higher-accuracy !DAO! or text
+Packet.decodeMicE = function(destination, payload) {
+  // decode latitude and some flags from destination
+  // don't care about message types
+  var ret = {},
+    d1 = destination.readUInt8(0) & 0x0F,
+    d0 = destination.readUInt8(1) & 0x0F,
+    m1 = destination.readUInt8(2) & 0x0F,
+    m0 = destination.readUInt8(3) & 0x0F,
+    h1 = destination.readUInt8(4) & 0x0F,
+    h0 = destination.readUInt8(5) & 0x0F,
+    ns = (destination.readUInt8(3) & 0x50) == 0x50,
+    l100 = (destination.readUInt8(4) & 0x50) == 0x50,
+    ew = (destination.readUInt8(5) & 0x50) != 0x50;
+
+  ns = ns ? 1 : -1; // convert to 1 (north) or -1 (south)
+  ew = ew ? 1 : -1; // convert to 1 (east) or -1 (west)
+  ret.latitude = ((d1*10 + d0) + (m1*10 + m0 + h1*0.1 + h0*0.01)/60) * ns;
+
+  // decode longitude
+  // don't care about speed, course, symbol code or table id
+  var ld, lm, lh;
+
+  ld = payload.readUInt8(1); // 0 offset is the packet type
+  if ((ld >= 118) && l100) {
+    // special condition where it's actually 0-9 degrees)
+    // http://www.aprs.org/doc/APRS101.PDF page 47
+    ld = (ld - 118);
+  } else {
+    ld = (ld - 28) + (100*l100);
+  }
+
+  lm = payload.readUInt8(2);
+  if (lm >= 88) {
+    lm = lm - 88;
+  } else {
+    lm = lm - 28;
+  }
+
+  lh = payload.readUInt8(3);
+  lh = lh - 28;
+
+  ret.longitude = (ld + (lm + lh*0.01)/60) * ew;
+  ret.symbolTable = payload.toString('ascii', 8, 9);
+  ret.symbolCode = payload.toString('ascii', 7, 8);
+
+  return ret;
+};
 
 Packet.decodeCoordinate = function(value) {
   var position = value.slice(0, -1);

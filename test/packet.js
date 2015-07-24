@@ -14,17 +14,17 @@ describe.only('Packet', function() {
       });
 
       it('parses the source field', function() {
-        var p = new Packet('SOURCE>DESTIN,VIA,VIA:payload');
+        var p = new Packet(new Buffer('SOURCE>DESTIN,VIA,VIA:payload'));
         assert.equal(p.sourceAddress, 'SOURCE');
       });
 
       it('parses the destination field', function() {
-        var p = new Packet('SOURCE>DESTIN,VIA,VIA:payload');
+        var p = new Packet(new Buffer('SOURCE>DESTIN,VIA,VIA:payload'));
         assert.equal(p.destinationAddress, 'DESTIN,VIA,VIA');
       });
 
       it('parses the payload field', function() {
-        var p = new Packet('SOURCE>DESTIN,VIA,VIA:payload');
+        var p = new Packet(new Buffer('SOURCE>DESTIN,VIA,VIA:payload'));
         assert.equal(p.payload, 'payload');
       });
     });
@@ -225,6 +225,25 @@ describe.only('Packet', function() {
       assert.closeTo(Packet.decompressLongitude('<*e7'), -72.75, 0.00001)
     });
 
-  })
+  });
+
+  describe('mic-e position', function() {
+    it('decodes mic-e position from Kenwood TH-D72', function() {
+      var destBuffer = new Buffer('4Y1VXT');
+      var destBuffer = new Buffer('T9QVXT');
+      var payloadBuffer = new Buffer('27335A1C7C215E595C3E223D7D', 'hex');
+      var p = Packet.decodeMicE(destBuffer, payloadBuffer);
+      assert.closeTo(p.latitude, 49.2806, 0.0001);
+      assert.closeTo(p.longitude, -123.0333, 0.0001);
+    });
+
+    it('decodes mic-e position from Bytronics TinyTrak3', function() {
+      var destBuffer = new Buffer('T9QVXT');
+      var payloadBuffer = new Buffer('6033597F7C21496B2F272234517D', 'hex');
+      var p = Packet.decodeMicE(destBuffer, payloadBuffer);
+      assert.closeTo(p.latitude, 49.2806, 0.0001);
+      assert.closeTo(p.longitude, -123.0332, 0.0001);
+    });
+  });
 
 });

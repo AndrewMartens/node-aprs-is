@@ -61,8 +61,11 @@ APRS.prototype.changeState = function(state) {
   }
 };
 
-APRS.prototype.parse = function(data) {
-  data = data.toString().slice(0, -2);
+APRS.prototype.parse = function(buffer) {
+  // data returns a buffer which we actually need to use because some "mic-e"
+  // packet types have non-printable characters which don't survive conversion
+  // to a string
+  var data = buffer.toString('utf-8').slice(0, -2);
 
   if(data.charAt(0) === '#') {
     var tokens = data.split(' ');
@@ -75,7 +78,7 @@ APRS.prototype.parse = function(data) {
       this.login(this.username, this.passcode);
     }
   } else {
-    var packet = new Packet(data);
+    var packet = new Packet(buffer);
 
     if (this.debug) {
       console.log('From:', packet.sourceAddress);
