@@ -1,6 +1,6 @@
 {
   "name": "node-aprs-is",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "APRS-IS client for Node.js",
   "main": "index.js",
   "scripts": {

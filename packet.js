@@ -20,6 +20,9 @@ var Packet = function(buffer, options) {
       case '\'':    // Old mic-e or new TM-D700
         this.packetType = 'mic-e';
         position = Packet.decodeMicE(this.destinationBuffer, this.payloadBuffer);
+        if (position === undefined) {
+          console.log('Unable to process mic-e packet: ' + destinationAddress, payload);
+        }
         break;
       case '/': // Position, w/ timestamp, w/o messaging
       case '@': // Position, w/ timestamp, w/ messaging
@@ -49,6 +52,10 @@ var Packet = function(buffer, options) {
 Packet.decodeMicE = function(destination, payload) {
   // decode latitude and some flags from destination
   // don't care about message types
+  if (Buffer.byteLength(destination) < 6) {
+    return;
+  }
+
   var ret = {},
     d1 = destination.readUInt8(0) & 0x0F,
     d0 = destination.readUInt8(1) & 0x0F,
@@ -63,6 +70,10 @@ Packet.decodeMicE = function(destination, payload) {
   ns = ns ? 1 : -1; // convert to 1 (north) or -1 (south)
   ew = ew ? 1 : -1; // convert to 1 (east) or -1 (west)
   ret.latitude = ((d1*10 + d0) + (m1*10 + m0 + h1*0.1 + h0*0.01)/60) * ns;
+
+  if (Buffer.byteLength(payload) < 10) {
+    return;
+  }
 
   // decode longitude
   // don't care about speed, course, symbol code or table id
